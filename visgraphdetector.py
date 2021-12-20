@@ -1,11 +1,13 @@
 import numpy as np
-import scipy as sp
+from scipy import signal
 from ts2vg import NaturalVisibilityGraph
 
 class VisGraphDetector:
     """
-    R-Peak detection algorithm using visibility graphs
-    
+    "Fast and Sample Accurate R-Peak Detection for Noisy ECG Using
+    Visibility Graphs"
+    License: 
+    Authors: Taulant Koka, Michael Muma
     """
 
     def __init__(self, sampling_frequency=250):
@@ -113,7 +115,7 @@ class VisGraphDetector:
         '''
         nyq = 0.5 * self.fs
         high = lowcut / nyq
-        b, a = sp.signal.butter(order, high,btype='highpass')
+        b, a = signal.butter(order, high,btype='highpass')
         return b, a
 
     def calc_weight(self, s,beta):
@@ -139,13 +141,13 @@ class VisGraphDetector:
             w = w_new
         return w
 
-    def visgraphdetect(self, signal, beta=0.55, gamma=0.5, lowcut=4.0, M = 500):
+    def visgraphdetect(self, sig, beta=0.55, gamma=0.5, lowcut=4.0, M = 500):
         """
         This function implements a R-peak detector using the directed natural visibility graph.
         Takes in an ECG-Signal and returns the R-peak indices, the weights and the weighted signal.
         
         Args:
-            signal <float>(array): The ECG-signal as a numpy array of length N.
+            sig <float>(array): The ECG-signal as a numpy array of length N.
             beta (float, optional): Sparsity parameter for the compuation of the weights. Defaults to 0.55.
             gamma (float, optional): Overlap between consecutive segments in the interval (0,1). Defaults to 0.5.
             lowcut (float, optional): Cutoff frequency of the highpass filter in Hz. Defaults to 4.
@@ -159,8 +161,8 @@ class VisGraphDetector:
         
         ### filter the signal with a highpass butterworth filter of order 2 ###
         b, a = self.highpass(lowcut)
-        signal = sp.signal.filtfilt(b,a,signal)
-        N = len(signal)
+        sig = signal.filtfilt(b,a,sig)
+        N = len(sig)
 
         ### Initialize some variables ###
         weights = np.zeros(N) # Empty array to store the weights
@@ -172,7 +174,7 @@ class VisGraphDetector:
         ### Compute the weights for the filtered signal ###
         # for loop is faster
         for jj in range(L):#while right <= N and left<=right:
-            s = signal[l:r]
+            s = sig[l:r]
             w = self.calc_weight(s,beta)
 
             ### Update full weight vector ###
@@ -198,6 +200,6 @@ class VisGraphDetector:
                 r = N
 
         ### weight the signal and use thresholding algorithm for the peak detection ###
-        weighted_signal = signal*weights
+        weighted_signal = sig*weights
         R_peaks = self.panPeakDetect(weighted_signal)
         return R_peaks, weights, weighted_signal
